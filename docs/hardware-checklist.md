@@ -19,7 +19,7 @@ In the Transmit window:
 2. Click **Arm** (the window title shows "armed"). Nothing is sent until armed; the status bar says "Arm transmit first" otherwise.
 3. **Send** sends the selected row once. Set **Cycle (ms)** and click **Start/Stop cyclic** to send periodically; click it again to stop. **Stop all** disarms and stops everything.
 
-Checking results: the Trace window lists received frames; the status bar shows `Rx: N` and `Tx: N`. The Statistics window shows Bus load, Frames/s, Error frames, Unique IDs and an ID / Frames/s table (no per-ID totals).
+Checking results: the Trace window lists received frames; the status bar shows `Rx: N` and `Tx: N`. These are cumulative since app start and are not reset on connect, so note them before a test and compare the increase (delta) afterwards. The Statistics window shows Bus load, Frames/s, Error frames, Unique IDs and an ID / Frames/s table (no per-ID totals).
 
 ## 1. slcan classic 500k
 
@@ -27,9 +27,9 @@ Board A and B on slcan firmware.
 
 - [ ] A toolbar: interface `slcan`, channel `COM5`, bitrate 500000, FD off, Connect. Same on B with `COM6`.
 - [ ] In A's Transmit window: arm, row ID `123`, Data `11 22 33 44 55 66 77 88`, click Send.
-- [ ] B Trace shows one row `0x123` with that data; B status bar `Rx: 1`; A status bar `Tx: 1`.
-- [ ] Repeat B to A.
-- [ ] On A set Cycle (ms) `10`, Start/Stop cyclic for 10 s, then stop: B status bar `Rx` rose by ~1000, B Statistics shows `0x123` at ~100 Frames/s while running, Error frames 0, no error on the status bar.
+- [ ] B Trace shows one row `0x123` with that data. Note Rx (B) and Tx (A) before sending; after sending, B Rx increased by 1 and A Tx increased by 1.
+- [ ] Repeat B to A (in B's Transmit window: Arm, then Send).
+- [ ] In A's Transmit window (armed) set Cycle (ms) `10` on the row, select it, click Start/Stop cyclic for 10 s, then click it again to stop. Note B Rx before; afterwards B Rx increased by ~1000, B Statistics shows `0x123` at ~100 Frames/s while running, Error frames 0, no error on the status bar.
 
 ## 2. slcan FD 500k / 2M
 
@@ -46,11 +46,11 @@ Flash board A (or both) with candleLight firmware.
 
 - [ ] Toolbar: interface `gs_usb`, channel `0` (device index), bitrate 500000, FD off, Connect.
 - [ ] Tick FD and Connect: connection fails with the error "CAN FD over gs_usb not supported" on the status bar. Untick FD again.
-- [ ] Send `123` from A (gs_usb) with B on slcan (500k); B Trace shows it. Send B to A; A Trace shows it.
+- [ ] With B on slcan (500k): in A's Transmit window click Arm, row ID `123`, Send; B Trace shows it. In B's Transmit window click Arm, Send; A Trace shows it.
 
 ## 4. Cable unplug mid-trace
 
-- [ ] Connect A and B at 500k, send cyclic 10 ms from A.
+- [ ] Connect A and B at 500k. In A's Transmit window click Arm, set Cycle (ms) `10` on a row, select it, click Start/Stop cyclic.
 - [ ] Unplug the USB cable of board B while B is tracing.
 - [ ] Within ~1 s B shows a disconnected state and an error on the status bar; the app does not freeze or crash. The Transmit window is disarmed.
 - [ ] Replug, press Connect: tracing resumes and the error clears.
@@ -63,7 +63,7 @@ Flash board A (or both) with candleLight firmware.
 
 ## 6. Logging 10 min at 50 % load
 
-- [ ] Both at 500000 classic. 50 % load is about 4 000 frames/s with 8-byte frames (~125 bits each). Generate it from A (several cyclic rows in the Transmit window, or a second tool); B Statistics Bus load should read ~50 %.
-- [ ] On B click Log, choose a `.blf` file, run 10 min. The status bar shows "Logging: <file>".
-- [ ] Click Log again to stop. Error frames stays 0, the GUI stayed responsive, and the status bar `Rx` matches the sender's `Tx` (A).
+- [ ] Both at 500000 classic. 50 % load is about 4 000 frames/s with 8-byte frames (~125 bits each). Generate it from A: in the Transmit window click Arm, add several rows with Cycle (ms) set (e.g. 8 rows at 2 ms), select each and click Start/Stop cyclic (or use a second tool); B Statistics Bus load should read ~50 %.
+- [ ] Note A Tx and B Rx before starting the sender. On B click Log, choose a `.blf` file, run 10 min. The status bar shows "Logging: <file>".
+- [ ] Click Log again to stop. Error frames stays 0, the GUI stayed responsive, and the increase in B Rx matches the increase in A Tx.
 - [ ] Reopen the file with Replay (or `can.LogReader`): frame count matches the sender's count.
