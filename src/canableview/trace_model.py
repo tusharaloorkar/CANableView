@@ -1,7 +1,6 @@
 """Table model for the Trace window: ring buffer (scroll) or one row per ID (fixed)."""
 from __future__ import annotations
 
-from collections import deque
 from typing import Literal
 
 import can
@@ -22,10 +21,11 @@ class TraceModel(QAbstractTableModel):
         self._reset()
 
     def _reset(self) -> None:
-        self._rows: deque[can.Message] = deque(maxlen=self._capacity)
+        # list, not deque: deque indexing is O(n) mid-queue and data() indexes constantly
+        self._rows: list[can.Message] = []
         self._t0: float | None = None
         self._newest = 0.0
-        # fixed mode only; parallel to self._rows (which is then a plain, never-trimmed deque)
+        # fixed mode only; parallel to self._rows (which is then a plain, never-trimmed list)
         self._key_row: dict[tuple, int] = {}
         self._prev_ts: list[float | None] = []
         self._changed_at: list[list[float]] = []
@@ -72,8 +72,7 @@ class TraceModel(QAbstractTableModel):
         overflow = len(self._rows) + len(msgs) - self._capacity
         if overflow > 0:
             self.beginRemoveRows(QModelIndex(), 0, overflow - 1)
-            for _ in range(overflow):
-                self._rows.popleft()
+            del self._rows[:overflow]
             self.endRemoveRows()
         first = len(self._rows)
         self.beginInsertRows(QModelIndex(), first, first + len(msgs) - 1)
