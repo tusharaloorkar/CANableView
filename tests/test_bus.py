@@ -60,3 +60,50 @@ def test_close_does_not_block_gui(qtbot):
     m = BusManager(); m.open(BusConfig("virtual", "t5"))
     t = time.perf_counter(); m.close()
     assert time.perf_counter() - t < 0.3
+
+
+def _fake_gs_usb(monkeypatch, qtbot):
+    real = can.Bus
+    monkeypatch.setattr("canableview.bus.can.Bus", lambda **kw: real(interface="virtual", channel="gs", receive_own_messages=False))
+    m = BusManager(); seen = []
+    m.add_listener(seen.append); m.open(BusConfig("gs_usb", "0"))
+    assert m.is_open
+    return m, seen
+
+
+def test_gs_usb_trusts_device_echo(monkeypatch, qtbot):
+    m, seen = _fake_gs_usb(monkeypatch, qtbot)
+    assert m.send(can.Message(arbitration_id=0x200, data=b"\x01"))
+    task = m.send_periodic(can.Message(arbitration_id=0x300, data=b"\x01"), 0.01)
+    qtbot.wait(100)
+    task.stop()
+    m.close()
+    assert seen == []  # candleLight echoes TX itself (is_rx=False); a software echo would duplicate it
+
+
+def test_gs_usb_restamps_with_host_clock(monkeypatch, qtbot):
+    import time
+    m, seen = _fake_gs_usb(monkeypatch, qtbot)
+    m._dispatch(can.Message(arbitration_id=1, timestamp=5.0))  # device µs counter
+    m.close()
+    assert abs(seen[0].timestamp - time.time()) < 1
+
+
+def test_send_survives_close_between_check_and_use(qtbot):
+    class Racy(BusManager):
+        reads = 0
+
+        @property
+        def _bus(self):
+            Racy.reads += 1
+            return self.__dict__.get("_b") if Racy.reads == 1 else None  # close() lands after the None check
+
+        @_bus.setter
+        def _bus(self, v):
+            self.__dict__["_b"] = v
+    m = Racy()
+    m._bus = Mock()
+    Racy.reads = 0
+    assert m.send(can.Message(arbitration_id=1)) is True
+    Racy.reads = 0
+    m.send_periodic(can.Message(arbitration_id=1), 0.1)

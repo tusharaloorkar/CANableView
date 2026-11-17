@@ -32,6 +32,9 @@ class BusManager(QObject):
         self._bus: can.BusABC | None = None
         self._notifier: can.Notifier | None = None
         self._listeners: list[Callable[[can.Message], None]] = []
+        # gs_usb (candleLight): the device echoes every TX (python-can returns it with is_rx=False)
+        # and stamps frames with a wrapping device µs counter, so no software echo and host restamp
+        self._gs_usb = False
         self._timer = QTimer(self)
         self._timer.setInterval(500)
         self._timer.timeout.connect(self._check_reader)
@@ -55,6 +58,7 @@ class BusManager(QObject):
         except Exception as exc:  # noqa: BLE001 - any backend failure is reported, never raised
             self.error.emit(str(exc))
             return
+        self._gs_usb = cfg.interface == "gs_usb"
         self._bus = bus
         self._notifier = can.Notifier(bus, [self._dispatch], timeout=0.1)  # short: close() joins the reader on the GUI thread
         self._timer.start()
@@ -98,6 +102,9 @@ class BusManager(QObject):
         self.disconnected.emit()
 
     def _dispatch(self, msg: can.Message) -> None:
+        if self._gs_usb:
+            msg = copy.copy(msg)
+            msg.timestamp = time.time()
         for fn in list(self._listeners):
             try:
                 fn(msg)
@@ -111,21 +118,24 @@ class BusManager(QObject):
         self._dispatch(tx)
 
     def send(self, msg: can.Message) -> bool:
-        if self._bus is None:
+        bus = self._bus  # close() may clear self._bus from another thread
+        if bus is None:
             return False
         try:
-            self._bus.send(msg)
+            bus.send(msg)
         except can.CanError as exc:
             self.error.emit(str(exc))
             return False
-        self._echo(msg)
+        if not self._gs_usb:
+            self._echo(msg)
         return True
 
     def send_periodic(self, msg: can.Message, period_s: float):
-        if self._bus is None:
+        bus = self._bus
+        if bus is None:
             return None
         try:
-            return self._bus.send_periodic(msg, period_s, modifier_callback=self._echo)
+            return bus.send_periodic(msg, period_s, modifier_callback=None if self._gs_usb else self._echo)
         except can.CanError as exc:
             self.error.emit(str(exc))
             return None
