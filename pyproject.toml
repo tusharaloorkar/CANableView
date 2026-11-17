@@ -17,3 +17,5 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
+addopts = "-m 'not slow'"
+markers = ["slow: long-running stress tests (run with -m slow)"]
