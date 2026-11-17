@@ -168,6 +168,8 @@ class MainWindow(QMainWindow):
         self.replayer.stop()
         self.transmit.stop_all()
         self._set_disconnected()
+        if self.last_error:
+            self.statusBar().showMessage(self.last_error)  # stop paths may have overwritten it
 
     def _on_error(self, text: str) -> None:
         self.last_error = text

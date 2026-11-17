@@ -126,3 +126,11 @@ def test_close_is_idempotent_and_saves_settings(qtbot):
     w.closeEvent(QCloseEvent())
     s = QSettings("CANableView", "CANableView")
     assert s.value("geometry") is not None and s.value("open_windows") is not None
+
+
+def test_reader_failure_error_survives_stop_status(qtbot):
+    w = _connected(qtbot)
+    w.bus.error.emit("reader died")
+    with patch.object(w.transmit, "stop_all", side_effect=lambda: w.transmit.status.emit("other")):
+        w.bus.disconnected.emit()
+    assert w.last_error in w.statusBar().currentMessage()
