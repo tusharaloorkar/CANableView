@@ -222,3 +222,15 @@ def test_reconnect_while_connected_runs_safety_teardown(qtbot):
         w.connect_bus()
     assert w.bus.is_open and not w.transmit.armed
     assert stop.called and not w.transmit._tasks
+
+
+def test_replay_action_shows_running_and_stops(qtbot, tmp_path):
+    w = _connected(qtbot)
+    a = w.connection_bar.replay_action
+    w.transmit.arm(True)
+    w.start_replay(_slow_log(tmp_path / "r.blf"))
+    assert a.isChecked() and a.text() == "Stop replay"
+    with qtbot.waitSignal(w.replayer.finished, timeout=500):
+        a.trigger()
+    qtbot.wait(20)
+    assert not a.isChecked() and a.text() == "Replay"

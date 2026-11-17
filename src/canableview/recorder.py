@@ -65,8 +65,12 @@ class Replayer(QObject):
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
 
+    @property
+    def running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
     def start(self, path: Path) -> None:
-        if self._thread is not None and self._thread.is_alive():
+        if self.running:
             raise RuntimeError("replay already running")
         reader = can.LogReader(Path(path))  # raises here on missing/unreadable file; no thread started
         self._stop.clear()

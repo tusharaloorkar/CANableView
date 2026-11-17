@@ -44,6 +44,7 @@ class ConnectionBar(QToolBar):
         self.connect_action = QAction("Connect", self)
         self.log_action = QAction("Log", self)
         self.replay_action = QAction("Replay", self)
+        self.replay_action.setCheckable(True)  # checked = replay running; click stops it
         self.clear_action = QAction("Clear", self)
 
         for w in (self.interface, self.channel, self.bitrate, self.fd, self.data_bitrate):
@@ -201,9 +202,19 @@ class MainWindow(QMainWindow):
         self.log_label.setText("Not logging")
 
     def _replay_clicked(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Replay log", "", _LOG_FILTER)
-        if path:
-            self.start_replay(Path(path))
+        if self.replayer.running:
+            self.replayer.stop()
+        else:
+            path, _ = QFileDialog.getOpenFileName(self, "Replay log", "", _LOG_FILTER)
+            if path:
+                self.start_replay(Path(path))
+        self._sync_replay_action()  # the click toggled the check state; restore the truth
+
+    def _sync_replay_action(self, on: bool | None = None) -> None:
+        on = self.replayer.running if on is None else on
+        a = self.connection_bar.replay_action
+        a.setChecked(on)
+        a.setText("Stop replay" if on else "Replay")
 
     def start_replay(self, path: Path) -> None:
         if not self.bus.is_open:
@@ -217,8 +228,10 @@ class MainWindow(QMainWindow):
                 self.statusBar().showMessage(f"Replay failed: {exc}")
                 return
             self.statusBar().showMessage(f"Replaying {Path(path).name}")
+            self._sync_replay_action()
 
     def _on_replay_finished(self) -> None:
+        self._sync_replay_action(False)  # finished is emitted while the worker thread is still alive
         if not self.bus.is_open and self.last_error:
             self.statusBar().showMessage(self.last_error)  # queued from the worker: don't hide a reader failure
         else:
