@@ -1,6 +1,7 @@
 """Table model for the Trace window: ring buffer (scroll) or one row per ID (fixed)."""
 from __future__ import annotations
 
+import time
 from typing import Literal
 
 import can
@@ -24,7 +25,7 @@ class TraceModel(QAbstractTableModel):
         # list, not deque: deque indexing is O(n) mid-queue and data() indexes constantly
         self._rows: list[can.Message] = []
         self._t0: float | None = None
-        self._newest = 0.0
+        self._offset = 0.0  # frame clock minus time.monotonic(), learned per batch: highlights expire when idle
         # fixed mode only; parallel to self._rows (which is then a plain, never-trimmed list)
         self._key_row: dict[tuple, int] = {}
         self._prev_ts: list[float | None] = []
@@ -61,7 +62,7 @@ class TraceModel(QAbstractTableModel):
             return
         if self._t0 is None:
             self._t0 = msgs[0].timestamp
-        self._newest = max(self._newest, max(m.timestamp for m in msgs))
+        self._offset = max(m.timestamp for m in msgs) - time.monotonic()
         if self._mode == "scroll":
             self._append_scroll(msgs)
         else:
@@ -123,9 +124,8 @@ class TraceModel(QAbstractTableModel):
         if role == self.CHANGED_ROLE:
             if self._mode != "fixed" or index.column() != 6:
                 return []
-            return [
-                i for i, t in enumerate(self._changed_at[row]) if self._newest - t <= _CHANGE_WINDOW
-            ]
+            now = time.monotonic() + self._offset
+            return [i for i, t in enumerate(self._changed_at[row]) if now - t <= _CHANGE_WINDOW]
         if role != Qt.DisplayRole:
             return None
         m = self._rows[row]

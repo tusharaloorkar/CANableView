@@ -71,3 +71,15 @@ def test_formats():
     assert m.index(1, 2).data() == "0x012" and m.index(1, 3).data() == "Tx"
     assert m.index(1, 5).data() == "RTR" and m.index(2, 5).data() == "ERR"
     assert m.index(0, 3).data() == "Rx" and m.index(0, 4).data() == "1"
+
+
+def test_highlight_expires_on_idle_bus(monkeypatch):
+    import time
+    clock = [100.0]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    m = TraceModel()
+    m.set_mode("fixed")
+    m.append_batch([msg(1, b"\x00\x00", t=0.0), msg(1, b"\x00\x05", t=0.1)])
+    assert m.index(0, 6).data(TraceModel.CHANGED_ROLE) == [1]
+    clock[0] += 2.0  # no new frames
+    assert m.index(0, 6).data(TraceModel.CHANGED_ROLE) == []
