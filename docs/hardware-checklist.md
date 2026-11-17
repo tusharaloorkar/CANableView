@@ -26,10 +26,11 @@ Checking results: the Trace window lists received frames; the status bar shows `
 Board A and B on slcan firmware.
 
 - [ ] A toolbar: interface `slcan`, channel `COM5`, bitrate 500000, FD off, Connect. Same on B with `COM6`.
-- [ ] In A's Transmit window: arm, row ID `123`, Data `11 22 33 44 55 66 77 88`, click Send.
-- [ ] B Trace shows one row `0x123` with that data. Note Rx (B) and Tx (A) before sending; after sending, B Rx increased by 1 and A Tx increased by 1.
+- [ ] Note Rx on B and Tx on A (status bars).
+- [ ] In A's Transmit window: click Arm, row ID `123`, Data `11 22 33 44 55 66 77 88`, click Send.
+- [ ] B Trace shows one row `0x123` with that data; B Rx increased by 1 and A Tx increased by 1.
 - [ ] Repeat B to A (in B's Transmit window: Arm, then Send).
-- [ ] In A's Transmit window (armed) set Cycle (ms) `10` on the row, select it, click Start/Stop cyclic for 10 s, then click it again to stop. Note B Rx before; afterwards B Rx increased by ~1000, B Statistics shows `0x123` at ~100 Frames/s while running, Error frames 0, no error on the status bar.
+- [ ] Note B Rx again. In A's Transmit window (armed) set Cycle (ms) `10` on the row, select it, click Start/Stop cyclic, wait 10 s, then click Start/Stop cyclic again to stop. B Rx increased by ~1000, B Statistics shows `0x123` at ~100 Frames/s while running, Error frames 0, no error on the status bar.
 
 ## 2. slcan FD 500k / 2M
 
@@ -38,7 +39,7 @@ Board A and B on slcan firmware.
 - [ ] Both toolbars: interface `slcan`, bitrate 500000, FD ticked, data bitrate 2000000, Connect.
 - [ ] A Transmit: arm, row ID `1ABC`, Ext ticked, FD ticked, BRS ticked, Data of 64 bytes, Send.
 - [ ] B Trace shows the FD frame with all 64 bytes and FD/BRS flags.
-- [ ] Repeat with BRS unticked.
+- [ ] Untick BRS on the row (A's Transmit window is still armed), click Send; B Trace shows the frame with 64 bytes and FD but no BRS.
 
 ## 3. gs_usb classic (candleLight firmware)
 
@@ -52,7 +53,7 @@ Flash board A (or both) with candleLight firmware.
 
 - [ ] Connect A and B at 500k. In A's Transmit window click Arm, set Cycle (ms) `10` on a row, select it, click Start/Stop cyclic.
 - [ ] Unplug the USB cable of board B while B is tracing.
-- [ ] Within ~1 s B shows a disconnected state and an error on the status bar; the app does not freeze or crash. The Transmit window is disarmed.
+- [ ] Within ~1 s B shows a disconnected state and an error on the status bar; the app does not freeze or crash. B's Transmit window is disarmed (B is the instance whose board was unplugged).
 - [ ] Replug, press Connect: tracing resumes and the error clears.
 
 ## 5. Wrong COM port
@@ -63,7 +64,9 @@ Flash board A (or both) with candleLight firmware.
 
 ## 6. Logging 10 min at 50 % load
 
-- [ ] Both at 500000 classic. 50 % load is about 4 000 frames/s with 8-byte frames (~125 bits each). Generate it from A: in the Transmit window click Arm, add several rows with Cycle (ms) set (e.g. 8 rows at 2 ms), select each and click Start/Stop cyclic (or use a second tool); B Statistics Bus load should read ~50 %.
-- [ ] Note A Tx and B Rx before starting the sender. On B click Log, choose a `.blf` file, run 10 min. The status bar shows "Logging: <file>".
-- [ ] Click Log again to stop. Error frames stays 0, the GUI stayed responsive, and the increase in B Rx matches the increase in A Tx.
+- [ ] Both at 500000 classic, connected. 50 % load is about 4 000 frames/s with 8-byte frames (~125 bits each).
+- [ ] Note A Tx and B Rx (status bars).
+- [ ] On B click Log and choose a `.blf` file. The status bar shows "Logging: <file>".
+- [ ] On A, in the Transmit window click Arm, add several rows with Cycle (ms) set (e.g. 8 rows at 2 ms), select each row in turn and click Start/Stop cyclic (or use a second tool). B Statistics Bus load should read ~50 %. Run 10 min.
+- [ ] Stop the sender (A: Stop all), then on B click Log again to stop. Error frames stays 0, the GUI stayed responsive, and the increase in B Rx matches the increase in A Tx.
 - [ ] Reopen the file with Replay (or `can.LogReader`): frame count matches the sender's count.
