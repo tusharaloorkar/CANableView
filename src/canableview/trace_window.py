@@ -45,9 +45,8 @@ class IdFilterProxy(QSortFilterProxyModel):
         self._ranges: list[tuple[int, int]] = []
 
     def set_ranges(self, ranges: list[tuple[int, int]]) -> None:
-        self.beginFilterChange()
         self._ranges = ranges
-        self.endFilterChange()
+        self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, parent: QModelIndex) -> bool:
         if not self._ranges:
