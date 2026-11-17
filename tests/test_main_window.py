@@ -211,6 +211,24 @@ def test_closing_transmit_subwindow_hides_it(qtbot):
     other.close()
 
 
+def test_hiding_transmit_window_disarms_and_stops_cyclic(qtbot):
+    from canableview.transmit import TxRow
+    w = _connected(qtbot)
+    w.show(); qtbot.waitExposed(w)
+    other = BusManager(); got = []
+    other.add_listener(got.append); other.open(BusConfig("virtual", "vcan0"))
+    w.transmit.add_row(TxRow(0x123, False, False, False, b"\x01", 10))
+    w.transmit.arm(True)
+    assert w.transmit.start_cyclic(0)
+    w._subs["Transmit"].close()
+    assert not w.transmit.armed
+    qtbot.wait(50)
+    n = len(got)
+    qtbot.wait(100)
+    assert len(got) == n  # nothing sent once hidden
+    other.close()
+
+
 def test_reconnect_while_connected_runs_safety_teardown(qtbot):
     from canableview.transmit import TxRow
     w = _connected(qtbot)

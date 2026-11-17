@@ -115,6 +115,14 @@ class TransmitWindow(QWidget):
             finally:
                 self.disarmed.emit()
 
+    def hideEvent(self, e) -> None:
+        # A hidden window can't show "armed", so it must not keep sending.
+        # Spontaneous hides (main window minimised) keep the armed state.
+        if self._armed and not e.spontaneous():
+            self.arm(False)
+            self.status.emit("Transmit disarmed: window closed")
+        super().hideEvent(e)
+
     def _stop_tasks(self) -> None:
         tasks, self._tasks = self._tasks, {}
         for t in tasks.values():
