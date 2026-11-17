@@ -88,3 +88,11 @@ def test_idle_tick_zeroes_cards(qtbot, monkeypatch):
     clock[0] = 103.0
     w._on_idle()
     assert w.cards["Frames/s"].text() == "0" and w.table.rowCount() == 0
+
+
+def test_out_of_order_timestamp_does_not_stall_eviction():
+    s = BusStats(500_000, 2_000_000)
+    s.add([can.Message(arbitration_id=1, timestamp=1000.0)], now=1000.0)  # far-future stamp at the head
+    for t in range(100):
+        s.add([can.Message(arbitration_id=2, timestamp=t / 10)], now=t / 10)
+    assert s.fps <= 12  # ~10 frames in the 1 s window + the stray one, not 101

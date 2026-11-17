@@ -43,11 +43,17 @@ class BusStats:
             self._frames.append((m.timestamp, m.arbitration_id, nom / self._bitrate + dat / self._data_bitrate))
             self._ids[m.arbitration_id] += 1
         cutoff = now - self._window
-        while self._frames and self._frames[0][0] < cutoff:
-            _, aid, _ = self._frames.popleft()
-            self._ids[aid] -= 1
-            if not self._ids[aid]:
-                del self._ids[aid]
+        # filter the whole window, not just the head: TX echo and RX arrive slightly out of order,
+        # and one stray future stamp at the head would otherwise block eviction forever
+        keep: deque[tuple[float, int | None, float]] = deque()
+        for f in self._frames:
+            if f[0] >= cutoff:
+                keep.append(f)
+                continue
+            self._ids[f[1]] -= 1
+            if not self._ids[f[1]]:
+                del self._ids[f[1]]
+        self._frames = keep
 
     @property
     def load_percent(self) -> float:
