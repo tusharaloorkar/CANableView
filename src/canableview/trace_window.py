@@ -45,8 +45,13 @@ class IdFilterProxy(QSortFilterProxyModel):
         self._ranges: list[tuple[int, int]] = []
 
     def set_ranges(self, ranges: list[tuple[int, int]]) -> None:
-        self._ranges = ranges
-        self.invalidateFilter()
+        if hasattr(self, "beginFilterChange"):  # Qt >= 6.9; invalidateFilter is deprecated there
+            self.beginFilterChange()
+            self._ranges = ranges
+            self.endFilterChange()
+        else:
+            self._ranges = ranges
+            self.invalidateFilter()
 
     def filterAcceptsRow(self, source_row: int, parent: QModelIndex) -> bool:
         if not self._ranges:
