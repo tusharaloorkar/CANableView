@@ -84,6 +84,8 @@ class Replayer(QObject):
             for msg in can.MessageSync(reader):
                 if self._stop.is_set():
                     break
+                if msg.is_error_frame:
+                    continue  # logged bus errors are not frames; slcan would send them as data
                 self._bus.send(msg)
         finally:
             reader.stop()

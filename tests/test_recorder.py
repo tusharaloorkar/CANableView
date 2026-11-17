@@ -90,3 +90,16 @@ def test_replay_missing_file_raises(tmp_path):
     with pytest.raises(Exception) as ei:
         r.start(tmp_path / "nope.asc")
     assert not isinstance(ei.value, RuntimeError)
+
+
+def test_replay_skips_error_frames(tmp_path, qtbot):
+    p = tmp_path / "err.asc"
+    with can.ASCWriter(p) as wr:
+        wr.on_message_received(can.Message(arbitration_id=1, timestamp=0.0))
+        wr.on_message_received(can.Message(is_error_frame=True, timestamp=0.001))
+        wr.on_message_received(can.Message(arbitration_id=2, timestamp=0.002))
+    bus = Mock()
+    r = Replayer(bus)
+    with qtbot.waitSignal(r.finished, timeout=3000):
+        r.start(p)
+    assert [c.args[0].arbitration_id for c in bus.send.call_args_list] == [1, 2]
