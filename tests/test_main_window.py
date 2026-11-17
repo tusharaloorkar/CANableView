@@ -182,3 +182,28 @@ def test_manual_disarm_stops_replay(qtbot, tmp_path):
     qtbot.wait(200)
     assert len(got) == n
     other.close()
+
+
+def test_closing_transmit_subwindow_hides_it(qtbot):
+    import shiboken6
+    from canableview.transmit import TxRow
+    w = _connected(qtbot)
+    other = BusManager(); got = []
+    other.add_listener(got.append); other.open(BusConfig("virtual", "vcan0"))
+    w.transmit.add_row(TxRow(0x123, False, False, False, b"\x01", 10))
+    w.transmit.arm(True)
+    assert w.transmit.start_cyclic(0)
+    w._subs["Transmit"].close()
+    qtbot.wait(50)  # deferred delete would run here
+    assert shiboken6.isValid(w.transmit) and shiboken6.isValid(w._subs["Transmit"])
+    w.disconnect_bus()
+    qtbot.wait(50)
+    n = len(got)
+    qtbot.wait(100)
+    assert n > 0 and len(got) == n
+    w._sync_window_menu()
+    a = w._win_actions["Transmit"]
+    assert not a.isChecked()
+    a.trigger()
+    assert not w._subs["Transmit"].isHidden()
+    other.close()
