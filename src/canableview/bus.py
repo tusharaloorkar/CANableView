@@ -56,7 +56,7 @@ class BusManager(QObject):
             self.error.emit(str(exc))
             return
         self._bus = bus
-        self._notifier = can.Notifier(bus, [self._dispatch])
+        self._notifier = can.Notifier(bus, [self._dispatch], timeout=0.1)  # short: close() joins the reader on the GUI thread
         self._timer.start()
         self.connected.emit()
 

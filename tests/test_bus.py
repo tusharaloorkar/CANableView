@@ -53,3 +53,10 @@ def test_send_periodic_echoes(qtbot):
     task.stop()
     assert all(s.is_rx is False for s in seen)
     m.close()
+
+
+def test_close_does_not_block_gui(qtbot):
+    import time
+    m = BusManager(); m.open(BusConfig("virtual", "t5"))
+    t = time.perf_counter(); m.close()
+    assert time.perf_counter() - t < 0.3
