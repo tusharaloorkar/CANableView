@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 import can
 from PySide6.QtCore import QSettings
+from PySide6.QtGui import QCloseEvent
 
 from canableview.bus import BusConfig, BusManager
 from canableview.main_window import ConnectionBar, MainWindow
@@ -122,6 +123,6 @@ def test_counts_per_batch(qtbot):
 def test_close_is_idempotent_and_saves_settings(qtbot):
     w = _win(qtbot)
     w.close()
-    w.closeEvent(__import__("PySide6.QtGui", fromlist=["QCloseEvent"]).QCloseEvent())
+    w.closeEvent(QCloseEvent())
     s = QSettings("CANableView", "CANableView")
     assert s.value("geometry") is not None and s.value("open_windows") is not None
