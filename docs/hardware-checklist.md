@@ -26,6 +26,7 @@ Checking results: the Trace window lists received frames; the status bar shows `
 Board A and B on slcan firmware.
 
 - [ ] A toolbar: interface `slcan`, channel `COM5`, bitrate 500000, FD off, Connect. Same on B with `COM6`.
+- [ ] Expected: the window freezes for about 2 s while an slcan port opens (python-can waits for the adapter). This is not a hang.
 - [ ] Note Rx on B and Tx on A (status bars).
 - [ ] In A's Transmit window: click Arm, row ID `123`, Data `11 22 33 44 55 66 77 88`, click Send.
 - [ ] B Trace shows one row `0x123` with that data; B Rx increased by 1 and A Tx increased by 1.
@@ -48,6 +49,7 @@ Flash board A (or both) with candleLight firmware.
 - [ ] Toolbar: interface `gs_usb`, channel `0` (device index), bitrate 500000, FD off, Connect.
 - [ ] Tick FD and Connect: connection fails with the error "CAN FD over gs_usb not supported" on the status bar. Untick FD again.
 - [ ] With B on slcan (500k): in A's Transmit window click Arm, row ID `123`, Send; B Trace shows it. In B's Transmit window click Arm, Send; A Trace shows it.
+- [ ] On A, note Tx, then click Send a few times: Tx increases by exactly 1 per Send and A's Trace shows one Tx row per send (no duplicates). candleLight echoes each sent frame; the app shows that echo instead of adding its own.
 
 ## 4. Cable unplug mid-trace
 
