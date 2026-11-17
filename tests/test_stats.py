@@ -69,3 +69,22 @@ def test_set_config_changes_load(qtbot):
     w.set_config(BusConfig("virtual", "x", bitrate=250_000))
     hub.batch.emit(batch)
     assert w.cards["Bus load"].text() != before
+
+
+def test_advance_evicts_when_quiet():
+    s = BusStats(500_000, 2_000_000)
+    s.add([can.Message(arbitration_id=1, timestamp=t / 10) for t in range(10)], now=1.0)
+    assert s.fps > 0
+    s.add([], now=3.0)
+    assert s.fps == 0 and s.load_percent == 0 and s.per_id_fps == {}
+
+
+def test_idle_tick_zeroes_cards(qtbot, monkeypatch):
+    clock = [100.0]
+    monkeypatch.setattr("canableview.stats.time.monotonic", lambda: clock[0])
+    hub = FrameHub(); w = StatisticsWindow(hub, BusConfig("virtual", "x")); qtbot.addWidget(w)
+    hub.batch.emit([can.Message(arbitration_id=1, timestamp=5.0)])
+    assert w.cards["Frames/s"].text() == "1"
+    clock[0] = 103.0
+    w._on_idle()
+    assert w.cards["Frames/s"].text() == "0" and w.table.rowCount() == 0

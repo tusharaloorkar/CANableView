@@ -1,9 +1,11 @@
 """Bus-load statistics over a sliding window of frame timestamps, and the Statistics MDI child."""
 from __future__ import annotations
 
+import time
 from collections import Counter, deque
 
 import can
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QGridLayout, QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget
 
 from .bus import BusConfig
@@ -81,8 +83,13 @@ class StatisticsWindow(QWidget):
         layout = QVBoxLayout(self)
         layout.addLayout(grid)
         layout.addWidget(self.table)
+        self._offset: float | None = None  # frame clock minus time.monotonic(), learned per batch
         self.set_config(bus_cfg)
         hub.batch.connect(self._on_batch)
+        # the hub emits nothing when idle, so age the window out ourselves
+        self._idle = QTimer(self)
+        self._idle.timeout.connect(self._on_idle)
+        self._idle.start(500)
 
     def set_config(self, cfg: BusConfig) -> None:
         """Bitrates change on reconnect: restart the window."""
@@ -92,7 +99,15 @@ class StatisticsWindow(QWidget):
     def _on_batch(self, msgs: list[can.Message]) -> None:
         if not msgs:
             return
-        self._stats.add(msgs, now=max(m.timestamp for m in msgs))
+        now = max(m.timestamp for m in msgs)
+        self._offset = now - time.monotonic()
+        self._stats.add(msgs, now=now)
+        self._refresh()
+
+    def _on_idle(self) -> None:
+        if self._offset is None:
+            return
+        self._stats.add([], now=time.monotonic() + self._offset)
         self._refresh()
 
     def _refresh(self) -> None:
