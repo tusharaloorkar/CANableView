@@ -147,6 +147,8 @@ class MainWindow(QMainWindow):
             self.connect_bus()
 
     def connect_bus(self) -> None:
+        if self.bus.is_open:
+            self.disconnect_bus()  # BusManager.open would close silently, skipping the TX/replay teardown
         cfg = self.connection_bar.config()
         self.statusBar().clearMessage()
         self.bus.open(cfg)

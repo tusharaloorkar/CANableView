@@ -207,3 +207,16 @@ def test_closing_transmit_subwindow_hides_it(qtbot):
     a.trigger()
     assert not w._subs["Transmit"].isHidden()
     other.close()
+
+
+def test_reconnect_while_connected_runs_safety_teardown(qtbot):
+    from canableview.transmit import TxRow
+    w = _connected(qtbot)
+    w.transmit.add_row(TxRow(0x123, False, False, False, b"\x01", 10))
+    w.transmit.arm(True)
+    assert w.transmit.start_cyclic(0)
+    task = w.transmit._tasks[0]
+    with patch.object(task, "stop", wraps=task.stop) as stop:
+        w.connect_bus()
+    assert w.bus.is_open and not w.transmit.armed
+    assert stop.called and not w.transmit._tasks
