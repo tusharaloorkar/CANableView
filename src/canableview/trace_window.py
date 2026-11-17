@@ -4,7 +4,7 @@ from __future__ import annotations
 from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Qt, QTimer
 from PySide6.QtGui import QAction, QColor, QFontDatabase
 from PySide6.QtWidgets import (
-    QAbstractItemView, QStyledItemDelegate, QTableView, QToolBar, QVBoxLayout, QWidget,
+    QAbstractItemView, QLineEdit, QStyledItemDelegate, QTableView, QToolBar, QVBoxLayout, QWidget,
 )
 
 from .hub import FrameHub
@@ -99,6 +99,11 @@ class TraceWindow(QWidget):
         self.clear_action.triggered.connect(self.model.clear)
         bar.addAction(self.mode_action)
         bar.addAction(self.clear_action)
+        self.filter_edit = QLineEdit()
+        self.filter_edit.setPlaceholderText("0x100-0x3FF, 0x7E8")
+        self.filter_edit.setClearButtonEnabled(True)
+        self.filter_edit.editingFinished.connect(self._apply_filter_edit)
+        bar.addWidget(self.filter_edit)
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
@@ -118,6 +123,10 @@ class TraceWindow(QWidget):
             return False
         self.proxy.set_ranges(ranges)
         return True
+
+    def _apply_filter_edit(self) -> None:
+        ok = self.set_id_filter(self.filter_edit.text())  # bad input keeps the previous filter
+        self.filter_edit.setStyleSheet("" if ok else "border: 1px solid red;")
 
     def _on_batch(self, msgs: list) -> None:
         sb = self.view.verticalScrollBar()

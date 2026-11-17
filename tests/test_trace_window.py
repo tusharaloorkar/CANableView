@@ -61,3 +61,17 @@ def test_refresh_timer_only_in_fixed_and_visible(qtbot):
 def test_highlight_indices_clamped_to_payload():
     assert valid_changed([0, 2, 5, 9], 3) == [0, 2]
     assert valid_changed(None, 3) == []
+
+
+def test_filter_edit_applies_and_flags_bad_input(qtbot):
+    hub = FrameHub(); w = TraceWindow(hub); qtbot.addWidget(w)
+    hub.batch.emit([can.Message(arbitration_id=i) for i in (0x50, 0x150, 0x500)])
+    w.filter_edit.setText("0x100-0x3FF")
+    w.filter_edit.editingFinished.emit()
+    assert w.proxy.rowCount() == 1 and not w.filter_edit.styleSheet()
+    w.filter_edit.setText("zz")
+    w.filter_edit.editingFinished.emit()
+    assert "red" in w.filter_edit.styleSheet() and w.proxy.rowCount() == 1
+    w.filter_edit.setText("")
+    w.filter_edit.editingFinished.emit()
+    assert w.proxy.rowCount() == 3 and not w.filter_edit.styleSheet()
