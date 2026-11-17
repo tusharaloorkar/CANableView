@@ -134,3 +134,27 @@ def test_reader_failure_error_survives_stop_status(qtbot):
     with patch.object(w.transmit, "stop_all", side_effect=lambda: w.transmit.status.emit("other")):
         w.bus.disconnected.emit()
     assert w.last_error in w.statusBar().currentMessage()
+
+
+def test_reader_failure_during_replay_keeps_error(qtbot, tmp_path):
+    w = _connected(qtbot)
+    p = tmp_path / "r.blf"
+    with can.Logger(p) as lg:
+        for i in range(10):
+            lg(can.Message(arbitration_id=i, timestamp=i * 0.05))
+    w.transmit.arm(True)
+    w.start_replay(p)
+    with qtbot.waitSignal(w.replayer.finished, timeout=3000):
+        w.bus.error.emit("reader died")
+        w.bus.close()  # a real reader failure closes the bus before emitting disconnected
+        w.bus.disconnected.emit()
+    qtbot.wait(50)
+    assert w.last_error in w.statusBar().currentMessage()
+
+
+def test_reconnect_clears_last_error(qtbot):
+    w = _win(qtbot)
+    w.bus.error.emit("old")
+    w.connection_bar.set_interface("virtual")
+    w.connect_bus()
+    assert w.bus.is_open and w.last_error == ""

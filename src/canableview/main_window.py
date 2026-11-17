@@ -151,6 +151,7 @@ class MainWindow(QMainWindow):
         self.bus.open(cfg)
         if not self.bus.is_open:
             return  # error already shown via bus.error
+        self.last_error = ""
         self.stats.set_config(cfg)
         self.connection_bar.connect_action.setText("Disconnect")
         self.state_label.setText(f"Connected: {cfg.interface} {cfg.channel}")
@@ -215,7 +216,10 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Replaying {Path(path).name}")
 
     def _on_replay_finished(self) -> None:
-        self.statusBar().showMessage("Replay finished", 5000)
+        if not self.bus.is_open and self.last_error:
+            self.statusBar().showMessage(self.last_error)  # queued from the worker: don't hide a reader failure
+        else:
+            self.statusBar().showMessage("Replay finished", 5000)
 
     # --- status -----------------------------------------------------------
     def _clear(self) -> None:
