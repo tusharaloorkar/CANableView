@@ -18,7 +18,7 @@ from .transmit import TransmitWindow
 
 _DEFAULT_CHANNEL = {"slcan": "COM3", "gs_usb": "0", "virtual": "vcan0"}
 _BITRATES = (125_000, 250_000, 500_000, 1_000_000)
-_DATA_BITRATES = (1_000_000, 2_000_000, 4_000_000, 5_000_000)
+_DATA_BITRATES = (2_000_000, 5_000_000)  # the only FD data rates python-can slcan accepts
 _LOG_FILTER = "CAN logs (*.blf *.asc *.csv)"
 
 

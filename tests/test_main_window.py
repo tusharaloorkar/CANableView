@@ -58,6 +58,8 @@ def test_connection_bar_defaults(qtbot):
     cfg = bar.config()
     assert (cfg.bitrate, cfg.fd, cfg.data_bitrate) == (500_000, False, 2_000_000)
     assert not bar.data_bitrate.isEnabled()
+    rates = [bar.data_bitrate.itemData(i) for i in range(bar.data_bitrate.count())]
+    assert rates == [2_000_000, 5_000_000]  # python-can slcan set_bitrate only accepts these
     bar.fd.setChecked(True)
     assert bar.data_bitrate.isEnabled() and bar.config().fd
 
