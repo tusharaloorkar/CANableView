@@ -144,3 +144,54 @@ def test_edit_data_cell_valid_and_invalid(qtbot):
         w.table.item(0, 4).setText("zz")
     assert w.rows[0].data == b"\xaa\xbb"
     assert w.table.item(0, 4).text() == "AA BB"
+
+
+def test_stop_all_survives_failing_task(qtbot):
+    bad, good = Mock(), Mock()
+    bad.stop.side_effect = RuntimeError("boom")
+    bus, w = _w(qtbot)
+    bus.send_periodic.side_effect = [bad, good]
+    for i in (1, 2):
+        w.add_row(TxRow(i, False, False, False, b"", 100))
+    w.arm(True)
+    w.start_cyclic(0)
+    w.start_cyclic(1)
+    with qtbot.waitSignal(w.stopped_all):
+        w.stop_all()
+    good.stop.assert_called_once()
+    assert w.armed is False and w._tasks == {}
+
+
+def test_bus_disconnect_disarms_and_clears(qtbot):
+    from PySide6.QtCore import QObject, Signal
+
+    class FakeBus(QObject):
+        disconnected = Signal()
+        is_open = True
+        send_periodic = Mock()
+
+    bus = FakeBus()
+    w = TransmitWindow(bus)
+    qtbot.addWidget(w)
+    t1, t2 = Mock(), Mock()
+    bus.send_periodic.side_effect = [t1, t2]
+    w.add_row(TxRow(0x200, False, False, False, b"\x01", 100))
+    w.arm(True)
+    assert w.start_cyclic(0)
+    bus.disconnected.emit()
+    t1.stop.assert_called_once()
+    assert w.armed is False
+    w.arm(True)
+    assert w.start_cyclic(0)
+    assert bus.send_periodic.call_count == 2
+
+
+def test_closed_bus_clears_stale_tasks(qtbot):
+    bus, w = _w(qtbot)
+    bus.send_periodic.return_value = Mock()
+    w.add_row(TxRow(0x200, False, False, False, b"\x01", 100))
+    w.arm(True)
+    w.start_cyclic(0)
+    bus.is_open = False
+    assert w.start_cyclic(0) is False
+    assert w._tasks == {}

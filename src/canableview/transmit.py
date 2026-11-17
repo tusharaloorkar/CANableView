@@ -1,6 +1,7 @@
 """Transmit MDI child: editable TX rows, explicit arm, one-shot and cyclic send, Stop all."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 import can
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from .bus import BusManager
 
+log = logging.getLogger(__name__)
 _FD_LENGTHS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64}
 _COLS = ["ID", "Ext", "FD", "BRS", "Data", "Cycle (ms)"]
 _ID, _EXT, _FD, _BRS, _DATA, _CYCLE = range(6)
@@ -67,6 +69,7 @@ class TransmitWindow(QWidget):
         self._armed = False
         self._loading = False
 
+        bus.disconnected.connect(lambda: self.arm(False))
         self.table = QTableWidget(0, len(_COLS))
         self.table.setHorizontalHeaderLabels(_COLS)
         self.table.itemChanged.connect(self._on_item_changed)
@@ -100,22 +103,27 @@ class TransmitWindow(QWidget):
         self.arm_btn.setStyleSheet("color: red;" if self._armed else "")
 
     def arm(self, on: bool) -> None:
-        if not on:
-            self._stop_tasks()
-        self._armed = on
+        self._armed = on  # disarm first so a failing stop() can never leave it armed
         self.arm_btn.blockSignals(True)
         self.arm_btn.setChecked(on)
         self.arm_btn.blockSignals(False)
         self._retitle()
+        if not on:
+            self._stop_tasks()
 
     def _stop_tasks(self) -> None:
         tasks, self._tasks = self._tasks, {}
         for t in tasks.values():
-            t.stop()
+            try:
+                t.stop()
+            except Exception:  # noqa: BLE001 - keep stopping the rest
+                log.exception("failed to stop cyclic task")
 
     def stop_all(self) -> None:
-        self.arm(False)  # also stops cyclic tasks
-        self.stopped_all.emit()
+        try:
+            self.arm(False)  # also stops cyclic tasks
+        finally:
+            self.stopped_all.emit()
 
     def _current(self) -> int | None:
         r = self.table.currentRow()
@@ -196,6 +204,7 @@ class TransmitWindow(QWidget):
         if not self._armed:
             self.status.emit("Arm transmit first")
         elif not self._bus.is_open:
+            self._tasks.clear()  # bus is gone, so are its tasks
             self.status.emit("Not connected")
         else:
             try:
