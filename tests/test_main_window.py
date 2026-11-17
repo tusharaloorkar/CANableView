@@ -158,3 +158,27 @@ def test_reconnect_clears_last_error(qtbot):
     w.connection_bar.set_interface("virtual")
     w.connect_bus()
     assert w.bus.is_open and w.last_error == ""
+
+
+def _slow_log(path, n=1000, spacing=0.01):
+    with can.Logger(path) as lg:
+        for i in range(n):
+            lg(can.Message(arbitration_id=0x100 + i % 8, timestamp=i * spacing))
+    return path
+
+
+def test_manual_disarm_stops_replay(qtbot, tmp_path):
+    w = _connected(qtbot)
+    other = BusManager(); got = []
+    other.add_listener(got.append); other.open(BusConfig("virtual", "vcan0"))
+    w.transmit.arm(True)
+    w.start_replay(_slow_log(tmp_path / "r.blf"))
+    qtbot.waitUntil(lambda: len(got) > 0, timeout=2000)
+    with qtbot.waitSignal(w.replayer.finished, timeout=500):  # file runs 10 s
+        w.transmit.arm_btn.click()  # Arm off
+    assert not w.transmit.armed
+    qtbot.wait(50)
+    n = len(got)
+    qtbot.wait(200)
+    assert len(got) == n
+    other.close()

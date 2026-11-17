@@ -59,6 +59,7 @@ def _message(row: TxRow) -> can.Message:
 
 class TransmitWindow(QWidget):
     status = Signal(str)
+    disarmed = Signal()  # every transition to disarmed: listeners (replay) must stop sending
     stopped_all = Signal()
 
     def __init__(self, bus: BusManager) -> None:
@@ -109,7 +110,10 @@ class TransmitWindow(QWidget):
         self.arm_btn.blockSignals(False)
         self._retitle()
         if not on:
-            self._stop_tasks()
+            try:
+                self._stop_tasks()
+            finally:
+                self.disarmed.emit()
 
     def _stop_tasks(self) -> None:
         tasks, self._tasks = self._tasks, {}

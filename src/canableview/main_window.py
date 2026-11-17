@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
         self.bus.error.connect(self._on_error)
         self.bus.disconnected.connect(self._on_bus_disconnected)
         self.hub.batch.connect(self._on_batch)  # after trace's own connection: model is already updated
-        self.transmit.stopped_all.connect(self.replayer.stop)
+        self.transmit.disarmed.connect(self.replayer.stop)  # manual disarm, disconnect and Stop all
         self.transmit.status.connect(self.statusBar().showMessage)
         self.replayer.finished.connect(self._on_replay_finished)  # bound method: queued onto the GUI thread
         self.hub.start(50)
